@@ -32,9 +32,9 @@ jobs:
         run: |
           ollama serve &
           sleep 5
-          ollama pull gemma4
+          ollama pull gemma4:e2b
 
       - name: Run triage
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: python triage.py ${{ github.repository }} --provider ollama --model gemma4
+        run: python triage.py ${{ github.repository }} --provider ollama --model gemma4:e2b
