@@ -24,15 +24,15 @@ Every issue gets: a final category, which docs were checked, a route, labels (re
 
 ## Quickstart — Self-hosting on GitHub Actions
 
-The simplest deployment: fork this repo, add one secret, and RepoRouter will triage issues filed against its own repo automatically.
+The workflow is already included. RepoRouter triages issues filed against itself automatically — no setup beyond enabling Actions.
 
-**Step 1 — Fork the repo** on GitHub.
+**Ollama (default)** — no secrets needed. The workflow installs Ollama on the runner and pulls `gemma4:e2b` at runtime.
 
-**Step 2 — Add your Ollama key.** If you're running Ollama locally, no secret is needed — the Actions workflow installs Ollama on the runner and pulls `gemma4:e2b` automatically. If you want to use Anthropic instead, add `ANTHROPIC_API_KEY` under Settings → Secrets and variables → Actions, then update the `run` line in `.github/workflows/triage.yml`.
-
-**Step 3 — Open an issue.** The workflow fires on `issues: opened` and on a 30-minute cron. Check the Actions tab to watch it run.
+**Anthropic (alternative)** — add `ANTHROPIC_API_KEY` under Settings → Secrets and variables → Actions, then change the `run` line in `.github/workflows/triage.yml` to remove `--provider ollama --model gemma4:e2b`.
 
 `GITHUB_TOKEN` is injected automatically — you never set it manually.
+
+Open an issue to test it. The workflow fires on `issues: opened` and on a 30-minute cron — check the Actions tab to watch it run.
 
 ---
 
