@@ -9,30 +9,16 @@ on:
 
 jobs:
   triage:
-    runs-on: ubuntu-latest
+    runs-on: self-hosted
     permissions:
-      issues: write           # post comments, apply labels, close issues
+      issues: write
       contents: read
 
     steps:
       - uses: actions/checkout@v4
 
-      - uses: actions/setup-python@v5
-        with:
-          python-version: "3.11"
-          cache: pip
-
       - name: Install dependencies
         run: pip install -r requirements.txt
-
-      - name: Install Ollama
-        run: curl -fsSL https://ollama.com/install.sh | sh
-
-      - name: Start Ollama and pull model
-        run: |
-          ollama serve &
-          sleep 5
-          ollama pull qwen3:8b
 
       - name: Run triage
         env:
