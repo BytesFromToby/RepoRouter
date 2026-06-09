@@ -26,9 +26,9 @@ Every issue gets: a final category, which docs were checked, a route, labels (re
 
 The workflow is already included. RepoRouter triages issues filed against itself automatically — no setup beyond enabling Actions.
 
-**Ollama (default)** — no secrets needed. The workflow installs Ollama on the runner and pulls `gemma4:e2b` at runtime.
+**Ollama (default)** — no secrets needed. The workflow installs Ollama on the runner and pulls `qwen3:8b` at runtime.
 
-**Anthropic (alternative)** — add `ANTHROPIC_API_KEY` under Settings → Secrets and variables → Actions, then change the `run` line in `.github/workflows/triage.yml` to remove `--provider ollama --model gemma4:e2b`.
+**Anthropic (alternative)** — add `ANTHROPIC_API_KEY` under Settings → Secrets and variables → Actions, then change the `run` line in `.github/workflows/triage.yml` to remove `--provider ollama --model qwen3:8b`.
 
 `GITHUB_TOKEN` is injected automatically — you never set it manually.
 
@@ -63,8 +63,8 @@ Or copy `.env.example` to `.env` and fill in your values.
 # CLI
 python triage.py owner/your-repo
 
-# CLI with Ollama (default model: gemma4:e2b)
-python triage.py owner/your-repo --provider ollama --model gemma4:e2b
+# CLI with Ollama (default model: qwen3:8b)
+python triage.py owner/your-repo --provider ollama --model qwen3:8b
 
 # Browser UI — then open http://localhost:5000
 python chat.py
