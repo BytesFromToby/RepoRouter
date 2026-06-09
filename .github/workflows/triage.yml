@@ -1,0 +1,32 @@
+name: RepoRouter — Self Triage
+
+on:
+  issues:
+    types: [opened, reopened]
+  schedule:
+    - cron: "*/30 * * * *"   # every 30 minutes as a catch-all
+  workflow_dispatch:          # manual trigger from the Actions tab
+
+jobs:
+  triage:
+    runs-on: ubuntu-latest
+    permissions:
+      issues: write           # post comments, apply labels, close issues
+      contents: read
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+
+      - name: Run triage
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+        run: python triage.py ${{ github.repository }}

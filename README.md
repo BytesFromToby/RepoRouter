@@ -1,20 +1,76 @@
-# The Maintainer
+# RepoRouter
 
-**A folder-based AI operator that triages open-source GitHub issues end-to-end.** Drop it
-into a Claude project, paste in an issue, and it makes the call: drafts a labeled reply,
-drafts a close, or privately escalates the few things a human must own — checking each
-issue against the project's own docs first. It decides and acts. It does not hand the
-question back.
+**An AI operator that triages open-source GitHub issues end-to-end.** Run it against a
+repo and it fetches every new issue, makes the call, and posts the result — labeled reply,
+close, or private escalation — checking each issue against the project's own docs first.
+It decides and acts. It does not hand the question back.
+
+Two modes: **automated** (run `triage.py`, it handles GitHub directly) or **manual** (paste
+an issue into a Claude session for a one-off draft).
 
 ## See it in action
 
-![The Maintainer triaging a GitHub issue end-to-end](reference/Maintaingit.gif)
+![RepoRouter triaging a GitHub issue end-to-end](reference/Maintaingit.gif)
 
 ---
 
-## Quickstart
+## Quickstart — Automated mode (recommended)
 
-**Step 1 — Drop the folder in (both paths).** Put this `the-maintainer/` folder in your
+**Step 1 — Install dependencies.**
+
+```bash
+pip install -r RepoRouter/requirements.txt
+```
+
+**Step 2 — Set credentials.** Copy `.env.example` to `.env` and fill in your values,
+or export the variables directly:
+
+```bash
+export GITHUB_TOKEN=ghp_...        # repo scope: read issues, write comments, labels, close
+export ANTHROPIC_API_KEY=sk-ant-...
+```
+
+**Step 3 — Run** (pick one).
+
+*Chat interface — open in a browser:*
+
+```bash
+python RepoRouter/chat.py
+# then open http://localhost:5000
+```
+
+*CLI — run directly:*
+
+```bash
+python RepoRouter/triage.py owner/your-repo
+```
+
+That's it. The script:
+- Finds every open issue the maintainer account hasn't commented on yet
+- Runs each through the full triage pipeline (reads your repo's own docs first)
+- Posts labels + replies, closes issues when appropriate
+- Writes `RepoRouter/followup.md` with any escalations that need your decision
+
+**Preview before posting** — add `--dry-run` to see what would happen without touching GitHub.
+
+**Change the model** — default is `claude-sonnet-4-6`. Use `--model claude-opus-4-8` for
+higher-quality triage on tricky repos.
+
+**Use Ollama instead of Anthropic** — no cloud key needed:
+
+```bash
+# CLI
+python RepoRouter/triage.py owner/repo --provider ollama --model llama3.2
+
+# Chat interface — toggle "Ollama" in the sidebar and pick a model
+python RepoRouter/chat.py
+```
+
+---
+
+## Quickstart — Manual mode (one-off drafts)
+
+**Step 1 — Drop the folder in (both paths).** Put this `RepoRouter/` folder in your
 repo (the root is fine) so it sits next to your docs. No repo handy? The included
 `reference/sample-project/` lets you try it immediately.
 
@@ -26,9 +82,9 @@ Add this block to it. The operator loads on demand, and its Step 0 already reads
 first — so the project and the operator reinforce each other.
 
 ```markdown
-## Issue triage — The Maintainer
-When I paste a GitHub issue (or say "triage this"), act as the operator in `the-maintainer/`:
-read `the-maintainer/identity.md` and `the-maintainer/rules.md`, then run the issue through
+## Issue triage — RepoRouter
+When I paste a GitHub issue (or say "triage this"), act as the operator in `RepoRouter/`:
+read `RepoRouter/identity.md` and `RepoRouter/rules.md`, then run the issue through
 that pipeline. Check claims against this repo's own docs. Draft only — never post.
 ```
 
@@ -37,8 +93,8 @@ that pipeline. Check claims against this repo's own docs. Draft only — never p
 Paste this orientation prompt once at the start of a Claude session:
 
 ```text
-You are now "The Maintainer," an issue-triage operator. Read the-maintainer/identity.md and
-the-maintainer/rules.md and follow them exactly. First, locate this repo's docs (spec,
+You are now "RepoRouter," an issue-triage operator. Read RepoRouter/identity.md and
+RepoRouter/rules.md and follow them exactly. First, locate this repo's docs (spec,
 roadmap, changelog, README) so you have ground truth to check against. When I paste a GitHub
 issue, run it through your pipeline and return ONE decision — respond+label, close, or
 escalate — with the labels and a finished draft. Draft only; never post. Reply "ready" and
@@ -78,10 +134,15 @@ question.
 ## What's in the folder
 
 ```
-the-maintainer/
+RepoRouter/
+├── triage.py        Core logic + CLI runner (also imported by chat.py)
+├── chat.py          Browser chat interface — paste issues or triage a repo live
+├── requirements.txt Python deps (anthropic, PyGithub, flask, requests)
+├── .env.example     Credential template (copy to .env, never commit it)
 ├── identity.md      Who the operator is; what's in and out of scope
 ├── rules.md         The decision logic — the heart. Pipeline, thresholds, edge cases
 ├── examples.md      Five worked decisions, incl. a category-flip and a public security report
+├── followup.md      Written each run — escalations that need a human decision (auto-created)
 ├── README.md        This file
 └── reference/
     ├── label-taxonomy.md     Routing → GitHub's 9 default labels (portable to any repo)
@@ -104,6 +165,9 @@ the-maintainer/
 
 ## Limits (by design)
 
-It drafts but never posts; it can't run your code, so it never claims a bug is "reproduced"
-or "fixed"; and it's only as good as your docs — if the spec is stale, tell it, and it'll
-escalate the uncertain calls rather than guess.
+In automated mode it posts replies, labels, and closes — but it never claims a bug is
+"reproduced" or "fixed" (it can't run your code). It's only as good as your docs: if the
+spec is stale, it escalates the uncertain calls to `followup.md` rather than guessing.
+Security reports are never posted publicly — always escalated privately via `followup.md`.
+
+In manual mode it drafts only; you review before touching GitHub.
