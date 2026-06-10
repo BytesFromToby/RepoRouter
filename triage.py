@@ -350,7 +350,9 @@ def run_triage(
 # ---------------------------------------------------------------------------
 
 def _write_followup(escalations: list, repo_name: str, dry_run: bool = False):
-    out   = SCRIPT_DIR / "followup.md"
+    out_dir = SCRIPT_DIR / "GithubIssues"
+    out_dir.mkdir(exist_ok=True)
+    out = out_dir / "followup.md"
     lines = [
         "# The Maintainer — Followup Required",
         "",
