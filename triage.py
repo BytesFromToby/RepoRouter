@@ -20,6 +20,7 @@ This module is also imported by chat.py — all public functions are stable.
 import os
 import re
 import sys
+import json
 import argparse
 import requests as _requests
 from pathlib import Path
@@ -325,6 +326,7 @@ def run_triage(
         draft  = parsed["draft"] or raw
 
         log(f"  → {route}  labels={labels}  priority={parsed['priority']}")
+        _write_issue_log(issue, parsed, route, repo_name, model, provider, dry_run)
 
         if route == "ESCALATE":
             escalations.append({"issue": issue, "output": raw, "parsed": parsed})
@@ -348,6 +350,30 @@ def run_triage(
 # ---------------------------------------------------------------------------
 # followup.md writer
 # ---------------------------------------------------------------------------
+
+def _write_issue_log(issue, parsed: dict, route: str, repo_name: str, model: str, provider: str, dry_run: bool):
+    log_dir = SCRIPT_DIR / "GithubIssues" / "IssueLog"
+    log_dir.mkdir(parents=True, exist_ok=True)
+    entry = {
+        "repo":      repo_name,
+        "number":    issue.number,
+        "title":     issue.title,
+        "url":       issue.html_url,
+        "author":    issue.user.login,
+        "created":   issue.created_at.strftime("%Y-%m-%d"),
+        "triaged":   datetime.now().strftime("%Y-%m-%d %H:%M"),
+        "category":  parsed.get("category") or parsed.get("raw", "")[:60],
+        "route":     route,
+        "labels":    parsed["labels"],
+        "priority":  parsed["priority"],
+        "draft":     parsed["draft"],
+        "model":     model,
+        "provider":  provider,
+        "dry_run":   dry_run,
+    }
+    out = log_dir / f"{issue.number}.json"
+    out.write_text(json.dumps(entry, indent=2, ensure_ascii=False), encoding="utf-8")
+
 
 def _write_followup(escalations: list, repo_name: str, dry_run: bool = False):
     out_dir = SCRIPT_DIR / "GithubIssues"
