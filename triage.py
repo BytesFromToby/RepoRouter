@@ -17,6 +17,8 @@ GitHub:
 This module is also imported by chat.py — all public functions are stable.
 """
 
+__version__ = "0.1.0"
+
 import os
 import re
 import sys
