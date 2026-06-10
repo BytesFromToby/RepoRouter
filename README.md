@@ -8,7 +8,7 @@ Three ways to run it: **self-hosted on GitHub Actions** (the repo triages its ow
 
 RepoRouter is triaging this repo's own issues right now, every 10 minutes. The docs are intentionally rough. File an issue — real, nitpicky, or completely fake — and watch it get triaged. See if it makes the right call.
 
-![RepoRouter triaging a GitHub issue end-to-end](docs/Maintaingit.gif)
+![RepoRouter triaging a GitHub issue end-to-end](docs/RepoRouter.png)
 
 
 ## How it works
