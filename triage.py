@@ -402,20 +402,32 @@ def _write_followup(escalations: list, repo_name: str, dry_run: bool = False):
 # ---------------------------------------------------------------------------
 
 if __name__ == "__main__":
-    parser = argparse.ArgumentParser(description="The Maintainer — automated issue triage")
+    import time
+
+    parser = argparse.ArgumentParser(description="RepoRouter — automated issue triage")
     parser.add_argument("repo", help="GitHub repo in owner/repo format")
     parser.add_argument("--dry-run",     action="store_true", help="Preview without posting")
     parser.add_argument("--provider",    default="anthropic", choices=["anthropic", "ollama"])
     parser.add_argument("--model",       default=None,
                         help="Model name (default: claude-sonnet-4-6 for anthropic, llama3.2 for ollama)")
     parser.add_argument("--ollama-host", default="http://localhost:11434")
+    parser.add_argument("--interval",    type=int, default=None, metavar="MINUTES",
+                        help="Run continuously, checking every N minutes")
     args = parser.parse_args()
 
     default_model = "llama3.2" if args.provider == "ollama" else "claude-sonnet-4-6"
-    run_triage(
-        args.repo,
+    kwargs = dict(
         dry_run=args.dry_run,
         model=args.model or default_model,
         provider=args.provider,
         ollama_host=args.ollama_host,
     )
+
+    if args.interval:
+        print(f"Running every {args.interval} minutes. Press Ctrl+C to stop.")
+        while True:
+            run_triage(args.repo, **kwargs)
+            print(f"Sleeping {args.interval} minutes...")
+            time.sleep(args.interval * 60)
+    else:
+        run_triage(args.repo, **kwargs)
