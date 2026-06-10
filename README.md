@@ -4,12 +4,6 @@
 
 Three ways to run it: **self-hosted on GitHub Actions** (the repo triages its own issues automatically), **local CLI** (`triage.py`), or **manual** (paste an issue into the browser UI for a one-off draft).
 
-## See it in action
-
-![RepoRouter triaging a GitHub issue end-to-end](reference/Maintaingit.gif)
-
----
-
 ## How it works
 
 ```
