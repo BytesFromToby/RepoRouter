@@ -142,15 +142,6 @@ RepoRouter/
 
 ---
 
-## Configure it for your project (optional, ~2 min)
-
-- **Labels** — defaults to GitHub's nine standard labels. Edit `reference/label-taxonomy.md` if yours differ.
-- **Priority** — tune the thresholds in `reference/triage-rubric.md` to your project's bar.
-- **Voice** — the templates in `reference/response-templates.md` are scaffolds; adjust tone once and every draft follows.
-- **Docs map** — if your repo has a `CLAUDE.md` or docs index, the operator finds your docs automatically. Otherwise it falls back to searching `docs/`, `rfcs/`, `CHANGELOG`, and similar conventions.
-
----
-
 ## Limits (by design)
 
 In automated mode it posts replies, applies labels, and closes issues — but it never claims a bug is "reproduced" or "fixed" (it cannot run your code). It is only as good as your docs: if the spec is stale, it escalates uncertain calls to `followup.md` rather than guessing. Security reports are never posted publicly — always escalated privately.
