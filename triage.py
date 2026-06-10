@@ -73,6 +73,26 @@ NO_ACTION       = {"noise"}
 SCRIPT_DIR = Path(__file__).parent
 
 
+def _load_dotenv(path: Path):
+    """Load KEY=value lines from .env into the environment (no overrides).
+
+    Kept dependency-free on purpose; real env vars always win.
+    """
+    if not path.is_file():
+        return
+    for line in path.read_text(encoding="utf-8").splitlines():
+        line = line.strip()
+        if not line or line.startswith("#") or "=" not in line:
+            continue
+        key, _, value = line.partition("=")
+        key, value = key.strip(), value.strip().strip('"').strip("'")
+        if key and key not in os.environ:
+            os.environ[key] = value
+
+
+_load_dotenv(SCRIPT_DIR / ".env")
+
+
 def _read(path: Path) -> str:
     return path.read_text(encoding="utf-8")
 
