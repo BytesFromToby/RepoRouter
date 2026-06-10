@@ -4,6 +4,11 @@
 
 Three ways to run it: **self-hosted on GitHub Actions** (the repo triages its own issues automatically), **local CLI** (`triage.py`), or **manual** (paste an issue into the browser UI for a one-off draft).
 
+# It is running on this Repo right now!
+
+It is checking for issues on this repo every 10 minutes.  This readme and other docs are "Not Great" on purpose.  Report issues even if they are little or fake. This is part of demoing the repo and also improving it.  
+
+
 ## How it works
 
 ```
