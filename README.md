@@ -1,85 +1,81 @@
 # RepoRouter
 
-**An AI operator that triages GitHub issues end-to-end.** Point it at a repo and it fetches every new issue, makes the call, and posts the result — labeled reply, close, or private escalation — checking each issue against the project's own docs first. It decides and acts. It does not hand the question back.
+**An AI operator that triages GitHub issues end-to-end — designed to run safely on small, local models.** Point it at a repo and it fetches every new issue, makes the call, and posts the result — labeled reply, close, or private escalation — checking each issue against the project's own docs first. It decides and acts. It does not hand the question back.
 
-Three ways to run it: **self-hosted on GitHub Actions** (the repo triages its own issues automatically), **local CLI** (`triage.py`), or **manual** (paste an issue into the browser UI for a one-off draft).
-
-## 🔴 Live — Try to Break It!
-
-RepoRouter is triaging this repo's own issues right now, every 10 minutes. The docs are intentionally rough. File an issue — real, nitpicky, or completely fake — and watch it get triaged. See if it makes the right call.
+Three ways to run it: **GitHub Actions** (the repo triages its own issues — the workflow ships in this repo), **local CLI** (`triage.py`), or **manual** (paste an issue into the browser UI or any AI chat for a one-off draft).
 
 ![RepoRouter triaging a GitHub issue end-to-end](docs/RepoRouter.png)
 
-
 ## How it works
 
+Two small LLM calls per issue, with the dangerous decisions taken away from the model:
+
 ```
-full issue ─► categorize ─► (security/spam/noise short-circuit) ─►
-    fetch only the relevant docs ─► confirm-or-flip ─► ONE of:
-        RESPOND + LABEL  ·  CLOSE  ·  ESCALATE (private, with a recommendation)
+full issue ─► CALL 1: categorize ─► harness short-circuits:
+                                      security/hostile ─► private escalation (LLM never drafts these)
+                                      spam ─► close with a canned reply
+                                      noise ─► no action
+                                      │
+                              everything else
+                                      ▼
+              fetch ONLY the docs relevant to that category
+                                      ▼
+              CALL 2: decide ─► confirm-or-flip against the docs ─► ONE of:
+                  RESPOND + LABEL  ·  CLOSE  ·  ESCALATE (private, with a recommendation)
+                                      ▼
+              harness validates before posting: parseable route, clean draft,
+              whitelisted labels — anything malformed becomes an escalation
 ```
 
-Every issue gets: a final category, which docs were checked, a route, labels (respecting any already there), a priority for confirmed bugs, and a finished draft — or a private escalation brief that ends with a recommendation, never a blank question.
+Every issue gets: a category, which docs were checked, a route, labels (added, never stripped), a priority for confirmed bugs, and a finished draft — or a private escalation brief that ends with a recommendation, never a blank question.
 
----
+## Built for small models
 
-## Quickstart — Self-hosting on GitHub Actions
+RepoRouter's default deployment is an 8B model on a local Ollama — so the architecture assumes the model *will* sometimes get the format wrong, and makes that safe:
 
-The workflow is already included. RepoRouter triages issues filed against itself automatically — no setup beyond enabling Actions.
+- **Two scoped calls, not one mega-prompt.** A tiny classification call, then a decision call carrying only the docs that category needs. Small models do markedly better with less to hold.
+- **The harness enforces the hard rules, not the prompt.** Security and hostile issues are short-circuited in code — no model output can post, label, or acknowledge them publicly. Labels are whitelisted to GitHub's nine standard names; invented labels are dropped, never created.
+- **Parse failure can never publish model internals.** No parseable draft → no post — the issue escalates to a human instead. Chain-of-thought (`<think>` blocks) is stripped before parsing, and a draft that still contains pipeline metadata is rejected.
+- **Existing labels are never stripped** — labels are added via the additive API, and a model "removing" a label has no effect.
+- **Temperature 0 everywhere**, and the decision prompt tells the model exactly what the parser accepts.
 
-**Ollama (default)** — no secrets needed. The workflow installs Ollama on the runner and pulls `qwen3:8b` at runtime.
+## Quickstart — GitHub Actions
 
-**Anthropic (alternative)** — add `ANTHROPIC_API_KEY` under Settings → Secrets and variables → Actions, then change the `run` line in `.github/workflows/triage.yml` to remove `--provider ollama --model qwen3:8b`.
+The workflow is included at `.github/workflows/triage.yml`. It fires on `issues: opened/reopened`, a 30-minute cron, and manual dispatch. `GITHUB_TOKEN` is injected automatically — you never set it.
 
-`GITHUB_TOKEN` is injected automatically — you never set it manually.
+**Self-hosted runner (default):** the runner machine needs Python 3.11+ on PATH and Ollama running with the model pulled (`ollama pull qwen3:8b`). Nothing else.
 
-Open an issue to test it. The workflow fires on `issues: opened` and on a 30-minute cron — check the Actions tab to watch it run.
+**GitHub-hosted runner:** change `runs-on` to `ubuntu-latest` and uncomment the Ollama install step in the workflow (~2 minutes added per run). Or switch the provider: add `ANTHROPIC_API_KEY` under Settings → Secrets → Actions and drop the `--provider ollama --model qwen3:8b` flags from the run line.
 
----
+Escalations (security reports, calls the docs can't settle) appear in the **run's step summary** and as a `followup` artifact — they are never posted to the issue.
 
 ## Quickstart — Local CLI
 
-**Step 1 — Install dependencies.**
-
 ```bash
 pip install -r requirements.txt
-```
 
-**Step 2 — Set credentials.**
-
-```bash
-# Ollama (default — requires a running Ollama instance)
+# credentials: copy .env.example to .env, or export directly
 export GITHUB_TOKEN=ghp_...
+export ANTHROPIC_API_KEY=sk-ant-...   # only for --provider anthropic
 
-# Anthropic (alternative)
-export GITHUB_TOKEN=ghp_...
-export ANTHROPIC_API_KEY=sk-ant-...
-```
-
-Or copy `.env.example` to `.env` and fill in your values.
-
-**Step 3 — Run.**
-
-```bash
-# CLI
+# triage every unhandled open issue
 python triage.py owner/your-repo
 
-# CLI with Ollama (default model: qwen3:8b)
-python triage.py owner/your-repo --provider ollama --model qwen3:8b
+# local model instead (default model: qwen3:8b)
+python triage.py owner/your-repo --provider ollama
 
-# Browser UI — then open http://localhost:5000
-python chat.py
+# preview every decision without touching GitHub
+python triage.py owner/your-repo --dry-run
+
+# one issue / recent issues only / continuous
+python triage.py owner/your-repo --issue 42
+python triage.py owner/your-repo --since 2026-06-01
+python triage.py owner/your-repo --interval 30
 ```
 
-**Preview before posting** — add `--dry-run` to see every decision without touching GitHub.
+Each run finds every open issue the operator hasn't commented on, runs the pipeline, posts labels/replies/closes as appropriate, and writes escalations to `GithubIssues/followup.md` plus a per-issue JSON log in `GithubIssues/IssueLog/`.
 
-Each run:
-- Finds every open issue the operator account hasn't commented on yet
-- Runs each through the full triage pipeline (reads your repo's own docs first)
-- Posts labels, replies, and closes issues as appropriate
-- Writes `followup.md` with any escalations that need your decision
-
----
+**Browser UI:** `python chat.py` → http://localhost:5000 — paste a single issue for an instant draft-only decision, or run a live repo triage and watch each decision stream in.
 
 ## Quickstart — Manual mode (one-off drafts)
 
@@ -106,30 +102,28 @@ Check claims against this repo's own docs. Draft only — never post.
 
 **Step 2 — Triage.** Paste a GitHub issue — **the whole block**, not just the title (author, role, body, existing labels, activity log). Say *"triage this."* You get back one decision, ready to act on.
 
----
-
 ## What makes it trustworthy
 
-- **It checks against your docs, not vibes.** A "bug" that the spec says is intended gets closed correctly; a feature on the roadmap gets the right holding reply.
-- **It branches on author role.** An issue filed by the `Owner` is treated as an internal note, not answered like an external ticket.
+- **It checks against your docs, not vibes.** A "bug" that the spec says is intended gets closed correctly; a feature on the roadmap gets the right holding reply. Doc discovery is case-insensitive and reads your repo's actual layout (root + `docs/`).
+- **It branches on author role.** GitHub's `author_association` is read for every issue — an issue filed by the repo Owner is treated as an internal note, not answered like an external ticket.
 - **It never guesses.** If the docs are silent on the behavior, it escalates with the open question spelled out instead of inventing a spec citation.
-- **It handles security safely.** Security reports are escalated privately and **unlabeled** — never confirmed, discussed, or tagged in public. See `reference/security-handling.md`.
-- **It drafts, never posts unreviewed.** Safe to run unattended; you review and click.
-
----
+- **It handles security structurally.** Security reports short-circuit in code before any LLM drafting — escalated privately, unlabeled, never confirmed or discussed in public. See `reference/security-handling.md`.
+- **Its safety layer is tested.** The parser, validators, and guardrails are pinned by a pytest suite (`python -m pytest tests/ -q`) — no network or LLM required.
 
 ## What's in the repo
 
 ```
 RepoRouter/
-├── triage.py              Core pipeline + CLI runner (also imported by chat.py)
+├── triage.py              Core pipeline + CLI (also imported by chat.py)
 ├── chat.py                Browser UI — paste issues or triage a repo live
+├── tests/                 Pytest suite for the parser, validators, and guardrails
 ├── requirements.txt       Python deps (anthropic, PyGithub, flask, requests)
 ├── .env.example           Credential template (copy to .env, never commit it)
+├── .github/workflows/     The self-triage Actions workflow
 ├── identity.md            Operator scope and limits
 ├── rules.md               The decision pipeline — the heart
 ├── examples.md            Five worked decisions, including edge cases
-├── followup.md            Written each run — escalations needing a human decision (auto-created, gitignored)
+├── GithubIssues/          Run output (gitignored): followup.md + per-issue JSON logs
 ├── docs/
 │   ├── SPEC.md            Full technical specification
 │   ├── ROADMAP.md         Planned milestones and non-goals
@@ -142,10 +136,8 @@ RepoRouter/
     └── sample-project/        Demo repo (Log_breakdown) for immediate testing
 ```
 
----
-
 ## Limits (by design)
 
-In automated mode it posts replies, applies labels, and closes issues — but it never claims a bug is "reproduced" or "fixed" (it cannot run your code). It is only as good as your docs: if the spec is stale, it escalates uncertain calls to `followup.md` rather than guessing. Security reports are never posted publicly — always escalated privately.
+In automated mode it posts replies, applies labels, and closes issues — but it never claims a bug is "reproduced" or "fixed" (it cannot run your code). It is only as good as your docs: where the spec is stale or silent, it escalates rather than guesses. Security reports are never posted publicly — always escalated privately, and that rule is enforced by the harness, not by the model's good behavior.
 
 In manual mode it drafts only; you review before touching GitHub.
