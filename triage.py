@@ -347,8 +347,16 @@ Everything after it is the artifact. Never repeat ROUTE/LABELS/CATEGORY lines
 below the dashes."""
 
 
-def build_decide_prompt(category: str, repo_docs: dict[str, str], posting: bool = True) -> str:
-    """System prompt for the decision call. Scoped to the category."""
+INTERNAL_ROLES = {"Owner", "Member", "Collaborator"}
+
+
+def build_decide_prompt(category: str, repo_docs: dict[str, str], posting: bool = True,
+                        author_role: str | None = None) -> str:
+    """System prompt for the decision call. Scoped to the category.
+
+    Conditionals a small model reliably misses when buried in rules.md
+    (author role, operational limits) are hoisted into direct instructions here.
+    """
     ref_names = ["label-taxonomy.md", "response-templates.md"]
     if category in ("bug", "unknown"):
         ref_names.append("triage-rubric.md")
@@ -373,11 +381,31 @@ def build_decide_prompt(category: str, repo_docs: dict[str, str], posting: bool 
         "This is a draft-only run. A human reviews everything before anything is posted."
     )
 
+    role_note = ""
+    if author_role in INTERNAL_ROLES:
+        role_note = (
+            f"\nIMPORTANT - THE AUTHOR IS INTERNAL ({author_role}). This is the team "
+            f"logging its own work, not an external ticket. Write the draft as a terse "
+            f"internal note: start with the finding itself, no greeting, no 'Thanks', "
+            f"no outreach voice. State what the docs say, the decision, and the next "
+            f"step. (e.g. 'On the roadmap: v0.4, GitHub App auth. Labeling "
+            f"enhancement.')\n"
+        )
+
     return (
         f"You are RepoRouter, an automated issue-triage operator for this project. "
         f"A first pass classified this issue as: {category}. Verify that against the "
         f"documentation below and flip it if the docs say otherwise.\n"
-        f"{mode_note}\n\n"
+        f"{mode_note}\n"
+        f"{role_note}\n"
+        f"Operational limits - never violate these in a draft:\n"
+        f"- You cannot write, fix, run, or test code. Never offer to ('I'll draft a "
+        f"fix', 'want me to patch this?').\n"
+        f"- Never include a URL, issue number, file path, or version that does not "
+        f"appear in the issue or the documentation below. No invented tracking "
+        f"issues, links, or forums.\n"
+        f"- No [bracketed] placeholders may survive into a draft - fill them with a "
+        f"verified specific or drop the sentence.\n\n"
         f"Follow the decision pipeline in rules.md below. Steps 0 and 4 are already "
         f"done for you - the relevant project docs are included in this prompt. "
         f"Do not invent facts that are not in them.\n\n"
@@ -627,7 +655,11 @@ def triage_issue_text(
                 "priority": "n/a", "docs_checked": "short-circuited", "guardrail": "",
                 "draft": SPAM_CLOSE_COMMENT, "raw": ""}
 
-    system = build_decide_prompt(category, repo_docs or {}, posting=posting)
+    role_match = re.search(r"Author:[^\n(]*\(([^)]+)\)", issue_text)
+    author_role = role_match.group(1).strip() if role_match else None
+
+    system = build_decide_prompt(category, repo_docs or {}, posting=posting,
+                                 author_role=author_role)
     raw    = call_llm(system, f"Triage this:\n\n{issue_text}", **llm)
     parsed = parse_output(raw)
     parsed["category"] = parsed["category"] or category
@@ -761,7 +793,8 @@ def run_triage(
 
         # --- decision call, scoped docs ------------------------------------
         repo_docs = fetch_docs(repo, select_docs(doc_index, category))
-        system    = build_decide_prompt(category, repo_docs, posting=not dry_run)
+        system    = build_decide_prompt(category, repo_docs, posting=not dry_run,
+                                        author_role=_author_role(issue))
         raw       = call_llm(system, f"Triage this:\n\n{issue_text}", **llm)
         parsed    = parse_output(raw)
         parsed["category"] = parsed["category"] or category

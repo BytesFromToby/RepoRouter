@@ -8,6 +8,19 @@ reporter can tell a human actually read it.
 
 Drafts are for the maintainer to review and post. The operator posts nothing.
 
+## Rules for filling a scaffold (apply to every template below)
+
+1. **No brackets survive.** Every `[placeholder]` is either replaced with a real,
+   verified specific or its whole sentence is dropped. A draft containing `[` `]`
+   placeholders is a failed draft.
+2. **Never invent a reference.** No URL, issue number, file path, version, or section
+   name appears in a draft unless it came from the issue itself or the docs provided.
+   No "tracking issue," no Discussions link, no forum — unless the docs name one.
+3. **Never offer work the operator cannot do.** The operator does not write, fix, or
+   run code, and does not open issues or PRs. Do not offer to "draft a fix," "put up
+   a patch," or "link a tracking issue."
+4. **If a template sentence doesn't apply, delete it** — don't approximate it.
+
 ---
 
 ## Confirmed bug (external reporter)
@@ -49,16 +62,20 @@ so the next person doesn't hit this.*
 
 ## Feature — on the roadmap
 
-> Thanks — this is already planned. It's tracked for [vX / milestone] (see [roadmap/#issue]).
-> I'll keep this labeled `enhancement` and link it to the tracking issue. Following along
-> there will get you the updates.
+> Thanks — this is already planned. It's on the roadmap for [vX / milestone, as the
+> roadmap doc actually states it]. Labeling `enhancement`; the roadmap is where updates
+> will land.
+
+(Mention a tracking issue **only** if the roadmap or issue thread names one by number.)
 
 ## Feature — declined (out of scope)
 
 > Appreciate the suggestion. This one sits outside what the project is trying to be —
-> [non-goal §X] spells out why [scope rationale]. I'm going to close it as `wontfix`, but
-> [if applicable:] you could get there with [plugin/extension/fork path]. Not a no to your
-> use case, just a no to it living in core.
+> [non-goal §X] spells out why [scope rationale]. I'm going to close it as `wontfix`.
+> Not a no to your use case, just a no to it living in core.
+
+(Add an alternative path — plugin, fork, extension — **only** if the docs explicitly
+name one. Never invent a link or venue for it.)
 
 ## Usage question (answer in docs)
 
@@ -76,7 +93,7 @@ so the next person doesn't hit this.*
 > Internal — README diff against current spec/changelog. Likely-stale spots:
 > - [README line/section] — says [X], but [spec §/changelog] now says [Y].
 > - [README line/section] — references [removed/renamed thing].
-> Keeping `documentation`. Confirm the list and I'll draft the patch. Not closing.
+> Keeping `documentation`. The list above is the work item. Not closing.
 
 ## Duplicate (no new info)
 

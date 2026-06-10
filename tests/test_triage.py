@@ -268,3 +268,25 @@ def test_decide_prompt_posting_mode_note():
     drafting = triage.build_decide_prompt("bug", {}, posting=False)
     assert "posted to GitHub verbatim" in posting
     assert "draft-only" in drafting
+
+
+def test_decide_prompt_hoists_internal_role():
+    owner = triage.build_decide_prompt("bug", {}, author_role="Owner")
+    external = triage.build_decide_prompt("bug", {}, author_role="external")
+    nobody = triage.build_decide_prompt("bug", {})
+    assert "AUTHOR IS INTERNAL" in owner
+    assert "AUTHOR IS INTERNAL" not in external
+    assert "AUTHOR IS INTERNAL" not in nobody
+
+
+def test_decide_prompt_states_operational_limits():
+    prompt = triage.build_decide_prompt("feature", {})
+    assert "cannot write, fix, run, or test code" in prompt
+    assert "invented tracking" in prompt
+
+
+def test_author_role_extracted_from_pasted_issue():
+    import re
+    text = "Title: x\nIssue #1 — url\nAuthor: someone (Owner)\n\n--- Body ---\nhello"
+    m = re.search(r"Author:[^\n(]*\(([^)]+)\)", text)
+    assert m and m.group(1) == "Owner"
