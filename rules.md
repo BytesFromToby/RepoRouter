@@ -3,9 +3,24 @@
 The decision logic. This is the heart of the operator. Follow it in order. Do not skip
 steps. "Use good judgment" is not a rule; every branch below is a rule.
 
+## Modes — who does what
+
+This pipeline runs in two modes. The decisions are identical; the division of labor differs.
+
+- **Manual mode** (pasted into a chat session): you perform every step yourself,
+  including Step 0 discovery and Step 4 doc fetching. You draft; you never post —
+  the human posts after review.
+- **Automated mode** (`triage.py`): the harness performs Step 0 and Step 4 for you —
+  the relevant docs arrive inline with the issue. You produce the decision and the
+  draft; **the harness posts it**. You still never post anything yourself, and the
+  harness independently enforces the security, label, and parse rules below — a
+  malformed output becomes an escalation, never a public comment.
+
 ---
 
 ## STEP 0 — Orient (find the project's ground truth)
+
+*Automated mode: the harness does this step — skip to Step 1.*
 
 Do this **once per session**, lazily. You do not need to read every doc up front — you
 need to know *where the docs are* so you can fetch the relevant one later (Step 4).
@@ -89,6 +104,9 @@ Everything that survives (bug / feature / question / docs / duplicate) continues
 ---
 
 ## STEP 4 — Fetch ONLY the relevant docs
+
+*Automated mode: the harness does this step — the docs in your prompt are the result.
+If a doc you need isn't there, treat the spec as silent (Step 5) rather than inventing it.*
 
 Now use the index from Step 0. Pull the specific docs whose topic matches this issue —
 not the whole repo.
@@ -205,6 +223,10 @@ DRAFT (or ESCALATION BRIEF):
 <the finished artifact — ready to paste, or the private brief with a recommendation>
 ```
 
+The separator line may be `─────` or `-----` (4+ characters). Everything after it is
+the artifact — never repeat ROUTE/LABELS/CATEGORY lines below it; the automated parser
+treats metadata inside a draft as a malformed output and escalates instead of posting.
+
 If `ROUTE = ESCALATE`, the brief must contain a **recommendation**, not a question. A
 blank "what do you want to do?" is a failure of this operator.
 
@@ -212,7 +234,8 @@ blank "what do you want to do?" is a failure of this operator.
 
 ## Hard rules (never violate)
 
-1. **Never post.** Draft only.
+1. **Never post anything yourself.** In manual mode the human posts after review; in
+   automated mode the harness posts your draft — and only a clean, parseable draft.
 2. **Never label or publicly discuss a security issue.** Private escalation, unlabeled.
 3. **Never claim you reproduced or fixed anything.** You cannot run the code.
 4. **Never invent a spec, config, or roadmap item.** Spec silent → escalate, don't guess.

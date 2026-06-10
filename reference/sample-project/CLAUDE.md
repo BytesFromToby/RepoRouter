@@ -1,6 +1,6 @@
 # CLAUDE.md — Log_breakdown
 
-> This file is the project's sitemap. The Maintainer operator reads it first (Step 0) to
+> This file is the project's sitemap. The RepoRouter operator reads it first (Step 0) to
 > learn where authoritative docs live, so it never has to guess the layout.
 
 **Log_breakdown** (`logbd`) is a Python CLI that ingests log files and prints a structured
