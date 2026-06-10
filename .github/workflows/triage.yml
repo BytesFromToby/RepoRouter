@@ -1,0 +1,57 @@
+name: Issue triage
+
+on:
+  issues:
+    types: [opened, reopened]
+  schedule:
+    - cron: "*/30 * * * *"
+  workflow_dispatch:
+
+permissions:
+  issues: write
+  contents: read
+
+# Never let two triage runs overlap — the second would re-triage
+# issues the first is mid-way through commenting on.
+concurrency:
+  group: issue-triage
+  cancel-in-progress: false
+
+jobs:
+  triage:
+    # Self-hosted runner requirements: Python 3.11+ on PATH, Ollama running
+    # as a service with the model already pulled (ollama pull qwen3:8b).
+    # To run on GitHub-hosted ubuntu-latest instead, swap runs-on and
+    # uncomment the Ollama install step below (adds ~2 min per run).
+    runs-on: self-hosted
+    timeout-minutes: 30
+    env:
+      GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      # The Actions token has no /user endpoint; this tells triage.py which
+      # login marks an issue as already handled.
+      BOT_LOGIN: github-actions[bot]
+    steps:
+      - uses: actions/checkout@v4
+
+      # - name: Install Ollama (GitHub-hosted runners only)
+      #   run: |
+      #     curl -fsSL https://ollama.com/install.sh | sh
+      #     ollama serve &
+      #     sleep 5
+      #     ollama pull qwen3:8b
+
+      - name: Install dependencies
+        run: python -m pip install -r requirements.txt --quiet
+
+      - name: Triage open issues
+        run: python triage.py ${{ github.repository }} --provider ollama --model qwen3:8b
+
+      # Escalations also land in the run's step summary; the artifact is the
+      # full followup.md with each private brief.
+      - name: Upload followup briefs
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: followup
+          path: GithubIssues/followup.md
+          if-no-files-found: ignore
