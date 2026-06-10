@@ -1,4 +1,4 @@
-#!/usr/bin/env python3
+﻿#!/usr/bin/env python3
 """
 RepoRouter — core triage pipeline + CLI.
 
@@ -24,7 +24,7 @@ Design notes — built to run on small models:
     * The harness, not the model, enforces the dangerous rules: security and
       hostile issues never reach a posting path, labels are whitelisted,
       existing labels are never stripped, and anything unparseable escalates.
-    * Parse failure can never publish raw model output. No draft → no post.
+    * Parse failure can never publish raw model output. No draft -> no post.
 
 This module is also imported by chat.py — public functions are stable.
 """
@@ -80,7 +80,7 @@ def _load_dotenv(path: Path):
     """
     if not path.is_file():
         return
-    for line in path.read_text(encoding="utf-8").splitlines():
+    for line in path.read_text(encoding="utf-8-sig").splitlines():
         line = line.strip()
         if not line or line.startswith("#") or "=" not in line:
             continue
@@ -223,7 +223,7 @@ CATEGORY: <name>
 
 
 def parse_category(text: str) -> str:
-    """Extract a category from the classifier response. Unknown → 'unknown'."""
+    """Extract a category from the classifier response. Unknown -> 'unknown'."""
     text = strip_think(text)
     m = re.search(r"CATEGORY\s*:\s*([a-zA-Z]+)", text)
     word = (m.group(1) if m else text.strip().split()[0] if text.strip() else "").lower()
@@ -453,7 +453,7 @@ def parse_output(text: str) -> dict:
 
     # Draft = everything after the first separator line (drafts may contain
     # their own --- later), or after a DRAFT/ESCALATION BRIEF header.
-    # No match → no draft. Never falls back to raw output.
+    # No match -> no draft. Never falls back to raw output.
     draft = None
     first_sep = _SEPARATOR_RE.search(text)
     if first_sep:
@@ -672,7 +672,12 @@ def run_triage(
         if progress_cb:
             progress_cb(msg)
         else:
-            print(msg)
+            try:
+                print(msg)
+            except UnicodeEncodeError:
+                # Windows consoles may be cp1252; logging must never kill a run.
+                enc = sys.stdout.encoding or "ascii"
+                print(msg.encode(enc, errors="replace").decode(enc))
 
     llm = dict(provider=provider, model=model,
                anthropic_key=anthropic_key, ollama_host=ollama_host)
@@ -727,7 +732,7 @@ def run_triage(
                              guardrail=f"{category}: short-circuited, nothing posted")
             if result_cb:
                 result_cb(issue, parsed)
-            log("  → ESCALATE (short-circuit, nothing posted)")
+            log("  -> ESCALATE (short-circuit, nothing posted)")
             continue
 
         if category in NO_ACTION:
@@ -737,7 +742,7 @@ def run_triage(
             if result_cb:
                 result_cb(issue, {"category": category, "route": None, "labels": [],
                                   "priority": "n/a", "draft": None, "raw": ""})
-            log("  → no action (noise)")
+            log("  -> no action (noise)")
             continue
 
         if category in CANNED_CLOSE:
@@ -751,7 +756,7 @@ def run_triage(
             _write_issue_log(issue, parsed, "CLOSE", repo_name, model, provider, dry_run)
             if result_cb:
                 result_cb(issue, parsed)
-            log("  → CLOSE (spam, canned reply)")
+            log("  -> CLOSE (spam, canned reply)")
             continue
 
         # --- decision call, scoped docs ------------------------------------
@@ -765,7 +770,7 @@ def run_triage(
         parsed["route"] = route
         parsed["guardrail"] = reason
 
-        log(f"  → {route}  labels={parsed['labels']}  priority={parsed['priority']}"
+        log(f"  -> {route}  labels={parsed['labels']}  priority={parsed['priority']}"
             + (f"  [{reason}]" if reason else ""))
         _write_issue_log(issue, parsed, route, repo_name, model, provider, dry_run,
                          guardrail=reason)
@@ -775,7 +780,7 @@ def run_triage(
         if route == "ESCALATE":
             escalations.append({"issue": issue, "output": parsed.get("draft") or parsed["raw"],
                                 "parsed": parsed, "reason": reason})
-            log("  → Queued for followup.md")
+            log("  -> Queued for followup.md")
             continue
 
         if not dry_run:
