@@ -1,6 +1,6 @@
-#!/usr/bin/env python3
+﻿#!/usr/bin/env python3
 """
-The Maintainer — chat interface.
+RepoRouter — chat interface.
 
 Usage:
     python chat.py
@@ -37,7 +37,7 @@ _HTML = r"""<!DOCTYPE html>
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>The Maintainer</title>
+<title>RepoRouter</title>
 <style>
   *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
@@ -268,7 +268,7 @@ _HTML = r"""<!DOCTYPE html>
 
 <div id="sidebar">
   <div>
-    <h1>The Maintainer</h1>
+    <h1>RepoRouter</h1>
     <p class="tagline">AI issue triage operator</p>
   </div>
 
@@ -291,7 +291,7 @@ _HTML = r"""<!DOCTYPE html>
     <div class="s-label">Ollama host</div>
     <input type="text" id="ollama-host" value="http://localhost:11434">
     <div class="s-label" style="margin-top:4px">Model</div>
-    <input type="text" id="ollama-model" value="llama3.2" id="ollama-model-input">
+    <input type="text" id="ollama-model" value="qwen3:8b">
     <button id="fetch-models-btn" onclick="fetchOllamaModels()">↻ fetch available models</button>
     <div id="model-list"></div>
   </div>
@@ -595,51 +595,21 @@ def api_triage_repo_stream():
         if anthropic_key:
             os.environ["ANTHROPIC_API_KEY"] = anthropic_key
         try:
-            # Monkey-patch run_triage to also emit per-issue results via queue
-            from github import Github, GithubException
-            import triage as _core
+            # All triage logic lives in triage.run_triage — this worker only
+            # forwards its progress and per-issue results onto the SSE queue.
+            def _result(issue, parsed):
+                q.put({"type": "result", "raw": parsed.get("raw", ""), "parsed": parsed})
 
-            gh       = Github(os.environ["GITHUB_TOKEN"])
-            repo_obj = gh.get_repo(repo_name)
-            me       = gh.get_user().login
-            repo_docs     = _core.get_repo_docs(repo_obj)
-            system_prompt = _core.build_system_prompt(repo_docs, posting=not dry_run)
-
-            open_issues = [i for i in repo_obj.get_issues(state="open") if not i.pull_request]
-            unprocessed = [i for i in open_issues if not _core._already_handled(i, me)]
-
-            q.put({"type": "log", "msg": f"Authenticated as {me}. Found {len(unprocessed)} new issue(s)."})
-
-            escalations = []
-            for issue in unprocessed:
-                q.put({"type": "log", "msg": f"Triaging #{issue.number}: {issue.title}"})
-                raw    = _core.call_llm(
-                    system_prompt,
-                    f"Triage this:\n\n{_core._format_github_issue(issue)}",
-                    provider=provider, model=model,
-                    anthropic_key=anthropic_key, ollama_host=ollama_host,
-                )
-                parsed = _core.parse_output(raw)
-                route  = parsed["route"] or "ESCALATE"
-                labels = parsed["labels"]
-                draft  = parsed["draft"] or raw
-
-                q.put({"type": "result", "raw": raw, "parsed": parsed})
-
-                if route == "ESCALATE":
-                    escalations.append({"issue": issue, "output": raw, "parsed": parsed})
-                    continue
-
-                if not dry_run:
-                    if labels:
-                        _core._ensure_labels(repo_obj, labels)
-                        issue.set_labels(*labels)
-                    if draft:
-                        issue.create_comment(draft)
-                    if route == "CLOSE":
-                        issue.edit(state="closed")
-
-            _core._write_followup(escalations, repo_name, dry_run)
+            escalations = core.run_triage(
+                repo_name,
+                dry_run=dry_run,
+                provider=provider,
+                model=model,
+                anthropic_key=anthropic_key,
+                ollama_host=ollama_host,
+                progress_cb=_progress,
+                result_cb=_result,
+            )
             q.put({"type": "done", "escalations": len(escalations)})
         except Exception as exc:
             q.put({"type": "error", "msg": str(exc)})
@@ -684,9 +654,9 @@ def api_ollama_models():
 # ---------------------------------------------------------------------------
 
 if __name__ == "__main__":
-    parser = argparse.ArgumentParser(description="The Maintainer — chat interface")
+    parser = argparse.ArgumentParser(description="RepoRouter — chat interface")
     parser.add_argument("--port", type=int, default=5000)
     parser.add_argument("--host", default="127.0.0.1")
     args = parser.parse_args()
-    print(f"The Maintainer chat → http://{args.host}:{args.port}")
+    print(f"RepoRouter chat → http://{args.host}:{args.port}")
     app.run(host=args.host, port=args.port, debug=False, threaded=True)
