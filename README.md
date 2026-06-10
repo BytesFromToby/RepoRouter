@@ -4,9 +4,9 @@
 
 Three ways to run it: **self-hosted on GitHub Actions** (the repo triages its own issues automatically), **local CLI** (`triage.py`), or **manual** (paste an issue into the browser UI for a one-off draft).
 
-# It is running on this Repo right now!
+## 🔴 Live — Try to break it
 
-It is checking for issues on this repo every 10 minutes.  This readme and other docs are "Not Great" on purpose.  Report issues even if they are little or fake. This is part of demoing the repo and also improving it.  
+RepoRouter is triaging this repo's own issues right now, every 10 minutes. The docs are intentionally rough. File an issue — real, nitpicky, or completely fake — and watch it get triaged. See if it makes the right call.
 
 
 ## How it works
