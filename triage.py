@@ -29,7 +29,7 @@ Design notes — built to run on small models:
 This module is also imported by chat.py — public functions are stable.
 """
 
-__version__ = "0.3.0"
+__version__ = "0.3.1"
 
 import os
 import re
@@ -255,7 +255,7 @@ DOC_PATTERNS = [
 
 # Which doc kinds matter per category, in priority order.
 CATEGORY_DOCS = {
-    "bug":       ["claude", "spec", "changelog", "readme"],
+    "bug":       ["claude", "spec", "scope", "changelog", "readme"],
     "feature":   ["roadmap", "scope", "issues", "readme"],
     "question":  ["readme", "faq", "claude", "spec"],
     "docs":      ["readme", "changelog", "spec", "claude"],
@@ -441,6 +441,9 @@ LABEL_WHITELIST = set(_LABEL_COLORS)
 _SEPARATOR_RE = re.compile(r"^[\s]*[─—\-=_]{4,}[\s]*$", re.MULTILINE)
 _DRAFT_HEADER_RE = re.compile(r"^(DRAFT|ESCALATION BRIEF)\s*[:(][^\n]*\n?", re.I | re.M)
 _INTERNAL_RE = re.compile(r"^\s*(ROUTE|CATEGORY|LABELS|DOCS CHECKED|PRIORITY)\s*:", re.M)
+# An unfilled template placeholder: [bracketed text] NOT followed by ( — which
+# would make it a legitimate markdown link.
+_PLACEHOLDER_RE = re.compile(r"\[[^\]\n]+\](?!\()")
 
 
 def parse_output(text: str) -> dict:
@@ -519,6 +522,8 @@ def validate_decision(parsed: dict, category: str) -> tuple[str, str]:
         return "ESCALATE", f"route was {route} but no draft could be parsed"
     if looks_internal(parsed["draft"]):
         return "ESCALATE", "draft still contained pipeline metadata"
+    if _PLACEHOLDER_RE.search(parsed["draft"]):
+        return "ESCALATE", "draft contained an unfilled [template placeholder]"
     return route, ""
 
 
@@ -595,6 +600,27 @@ def _already_handled(issue, bot_login: str) -> bool:
         if comment.user.login == bot_login:
             return True
     return False
+
+
+def _already_logged_silent(issue_number: int, repo_name: str,
+                           base_dir: Path = SCRIPT_DIR) -> bool:
+    """True if a prior non-dry run already resolved this issue *silently*.
+
+    ESCALATE and NO ACTION leave no comment, so the comment check alone would
+    re-triage them forever. This consults the local IssueLog instead. On an
+    ephemeral runner the log is gone and a silent issue re-escalates — loud
+    but safe, and the step summary keeps it visible until a human acts.
+    """
+    log_file = base_dir / "GithubIssues" / "IssueLog" / f"{issue_number}.json"
+    if not log_file.is_file():
+        return False
+    try:
+        entry = json.loads(log_file.read_text(encoding="utf-8"))
+    except (json.JSONDecodeError, OSError):
+        return False
+    return (entry.get("repo") == repo_name
+            and not entry.get("dry_run")
+            and entry.get("route") in ("ESCALATE", "NO ACTION"))
 
 
 def _gh_write(fn, *args, **kwargs):
@@ -737,7 +763,9 @@ def run_triage(
     if since_dt:
         open_issues = [i for i in open_issues
                        if i.created_at.replace(tzinfo=timezone.utc) >= since_dt]
-    unprocessed = [i for i in open_issues if not _already_handled(i, me)]
+    unprocessed = [i for i in open_issues
+                   if not _already_handled(i, me)
+                   and not _already_logged_silent(i.number, repo_name)]
 
     if not unprocessed:
         log("No new issues to triage.")

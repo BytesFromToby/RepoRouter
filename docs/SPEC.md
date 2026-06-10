@@ -1,6 +1,6 @@
 # RepoRouter — Technical Specification
 
-Version 0.3. Covers the automated triage pipeline, the chat interface, the LLM contract,
+Version 0.3.1. Covers the automated triage pipeline, the chat interface, the LLM contract,
 and the GitHub integration. The decision logic lives in `rules.md`; this document covers
 the system that executes it.
 

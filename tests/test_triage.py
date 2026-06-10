@@ -181,6 +181,21 @@ def test_validate_internal_metadata_in_draft_escalates():
     assert route == "ESCALATE" and "metadata" in reason
 
 
+def test_validate_unfilled_placeholder_escalates():
+    # The exact failure observed live: a fabricated citation left as a
+    # bracket placeholder in an otherwise fluent draft.
+    bad = "This contradicts [docs/SPEC.md §3.1], which says PRs are triaged too."
+    route, reason = triage.validate_decision(_parsed("RESPOND", bad), "bug")
+    assert route == "ESCALATE" and "placeholder" in reason
+
+
+def test_validate_markdown_links_are_not_placeholders():
+    good = ("See [docs/ROADMAP.md](https://github.com/x/y/blob/main/docs/ROADMAP.md) "
+            "for the v0.4 plan.")
+    route, reason = triage.validate_decision(_parsed("RESPOND", good), "feature")
+    assert route == "RESPOND" and reason == ""
+
+
 def test_validate_clean_decision_passes():
     route, reason = triage.validate_decision(
         _parsed("RESPOND", "Thanks for the report — confirmed against the spec."), "bug")
@@ -290,3 +305,30 @@ def test_author_role_extracted_from_pasted_issue():
     text = "Title: x\nIssue #1 — url\nAuthor: someone (Owner)\n\n--- Body ---\nhello"
     m = re.search(r"Author:[^\n(]*\(([^)]+)\)", text)
     assert m and m.group(1) == "Owner"
+
+
+# ---------------------------------------------------------------------------
+# Silent-resolution tracking (escalations must not re-triage forever)
+# ---------------------------------------------------------------------------
+
+def test_already_logged_silent(tmp_path):
+    import json
+    log_dir = tmp_path / "GithubIssues" / "IssueLog"
+    log_dir.mkdir(parents=True)
+
+    def write(n, route, dry=False, repo="owner/repo"):
+        (log_dir / f"{n}.json").write_text(
+            json.dumps({"repo": repo, "route": route, "dry_run": dry}), encoding="utf-8")
+
+    write(1, "ESCALATE")
+    write(2, "NO ACTION")
+    write(3, "RESPOND")            # posted a comment — comment check covers it
+    write(4, "ESCALATE", dry=True)  # dry runs never count as handled
+    write(5, "ESCALATE", repo="other/repo")
+
+    assert triage._already_logged_silent(1, "owner/repo", tmp_path)
+    assert triage._already_logged_silent(2, "owner/repo", tmp_path)
+    assert not triage._already_logged_silent(3, "owner/repo", tmp_path)
+    assert not triage._already_logged_silent(4, "owner/repo", tmp_path)
+    assert not triage._already_logged_silent(5, "owner/repo", tmp_path)
+    assert not triage._already_logged_silent(99, "owner/repo", tmp_path)

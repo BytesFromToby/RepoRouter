@@ -4,7 +4,7 @@
 
 Three ways to run it: **GitHub Actions** (the repo triages its own issues — the workflow ships in this repo), **local CLI** (`triage.py`), or **manual** (paste an issue into the browser UI or any AI chat for a one-off draft).
 
-![RepoRouter triaging a GitHub issue end-to-end](docs/RepoRouter.png)
+![RepoRouter triaging live GitHub issues on a local 8B model: each issue is categorized, checked against the repo's docs, routed, and validated — security reports escalate privately with nothing posted.](docs/RepoRouter.gif)
 
 ## How it works
 

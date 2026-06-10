@@ -5,6 +5,35 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ---
 
+## [0.3.1] — 2026-06-10
+
+Live-fire release: everything here came out of running the operator against this repo's
+own issues on `qwen3:8b` and fixing what reality found.
+
+### Added
+- **Placeholder guard** — a draft containing an unfilled `[template placeholder]` (not a
+  markdown link) escalates instead of posting. Caught-in-the-wild case: a fabricated
+  spec citation left as `[docs/SPEC.md §3.1]` in an otherwise fluent reply (#10).
+- **Scaffold-filling rules** in `response-templates.md` — no surviving brackets, no
+  references not present in the issue or provided docs, no offers the operator can't
+  fulfill (the "link it to the tracking issue" and `[plugin/fork path]` bait that caused
+  live hallucinations in #5/#6 is gone).
+- **Hoisted conditionals** — the decision prompt now injects the author's role as a
+  direct instruction when internal (Owner/Member/Collaborator), plus explicit
+  operational limits; small models miss conditionals buried in rules.md.
+- **Silent-resolution tracking** — ESCALATE / NO ACTION issues are recorded in the local
+  IssueLog and not re-triaged every run (they leave no comment, so the comment check
+  alone looped on them).
+- `.env` loading at startup (dependency-free, BOM-tolerant) — the README promised it,
+  nothing read it.
+- `docs/mkgif.py` — generates the README hero GIF from real triage results.
+
+### Changed
+- Bug triage now also receives the scope/non-goals doc (a works-as-designed call needs it).
+- Console logging is crash-proof on cp1252 Windows consoles; log arrows are ASCII.
+
+---
+
 ## [0.3.0] — 2026-06-10
 
 Hardening release: rebuilt for safe operation on small local models.
