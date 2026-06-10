@@ -6,6 +6,12 @@ Three ways to run it: **GitHub Actions** (the repo triages its own issues — th
 
 ![RepoRouter triaging live GitHub issues on a local 8B model: each issue is categorized, checked against the repo's docs, routed, and validated — security reports escalate privately with nothing posted.](docs/RepoRouter.gif)
 
+## 🔴 Live — try to break it
+
+**This repo triages its own issues.** File one — real, nitpicky, or completely fake — and the Actions workflow routes it: a reply with labels, a close, or (for anything security-shaped) deliberately *no public response at all*, because security reports escalate privately by design.
+
+It runs on a self-hosted runner driving a local `qwen3:8b` — no cloud API in the loop. If a reply takes a few minutes, the model is thinking; if the runner box is asleep, the 30-minute cron catches up when it wakes. The [closed issues](../../issues?q=is%3Aissue+is%3Aclosed) are the track record so far — including one wrong call the maintainer corrected and turned into a validation guard (#10).
+
 ## How it works
 
 Two small LLM calls per issue, with the dangerous decisions taken away from the model:

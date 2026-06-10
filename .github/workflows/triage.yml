@@ -32,6 +32,11 @@ jobs:
       BOT_LOGIN: github-actions[bot]
     steps:
       - uses: actions/checkout@v4
+        with:
+          # Keep untracked run artifacts (GithubIssues/IssueLog) between runs on
+          # the self-hosted runner — silently-resolved issues (escalations,
+          # no-action noise) are tracked there and must not re-triage each run.
+          clean: false
 
       # - name: Install Ollama (GitHub-hosted runners only)
       #   run: |
