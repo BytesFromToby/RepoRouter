@@ -6,7 +6,7 @@ Priority order within each milestone. Items marked **[stretch]** ship only if th
 
 ## v0.3 — Reliability & Observability
 
-The self-triage workflow has run against this repo's real issues. This milestone hardens the
+The self-triaging repo is live and processing real issues. This milestone hardens the
 runtime so the operator fails gracefully and leaves a clear audit trail.
 
 - **Structured run log** — append a machine-readable JSON line per issue to `triage-log.jsonl`
