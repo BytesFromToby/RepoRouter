@@ -98,10 +98,11 @@ These exit **before** any doc lookup. Do not spend doc-reading effort on them.
   template). Stop here.
 
 **noise** (`+1`, "me too", "any update?", empty/test issues) does **not** short-circuit —
-every author gets an answer. Skip the doc lookup, but still **RESPOND** with a short,
-friendly acknowledgment: thank them, and if it's a bare "+1"/"any update?" point them at
-reactions or the tracking issue; if it's an empty or test issue, invite them to add
-details about what they're seeing. Keep it to one or two sentences. No labels, no priority.
+every author gets an answer, then the issue is closed (there's nothing to track). Skip the
+doc lookup and **CLOSE** with a short, friendly closing comment: thank them, and if it's a
+bare "+1"/"any update?" point them at reactions or the tracking issue; if it's an empty or
+test issue, invite them to open a new issue with details about what they're seeing. Keep it
+to one or two sentences. No labels, no priority.
 
 Everything that survives (noise / bug / feature / question / docs / duplicate) continues.
 

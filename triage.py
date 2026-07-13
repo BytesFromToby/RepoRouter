@@ -64,9 +64,13 @@ CATEGORIES = {
 # reply for these, so a bad model output cannot leak or mislabel them.
 FORCED_ESCALATE = {"security", "hostile"}
 CANNED_CLOSE    = {"spam"}
-# Every surviving category is answered. "noise" (test issues, +1, "any update?")
-# used to short-circuit to no-action here; it now flows through the decision
-# pipeline like anything else so nothing is left silently unanswered.
+# "noise" (test issues, +1, "any update?") gets an LLM-drafted acknowledgment,
+# then the harness closes it — there's nothing left to track. Forced here so a
+# small model can't leave a throwaway issue open by picking RESPOND.
+FORCED_CLOSE    = {"noise"}
+# Every surviving category is answered. "noise" used to short-circuit to
+# no-action here; it now flows through the decision pipeline like anything else
+# so nothing is left silently unanswered.
 NO_ACTION: set[str] = set()
 
 # ---------------------------------------------------------------------------
@@ -527,6 +531,8 @@ def validate_decision(parsed: dict, category: str) -> tuple[str, str]:
         return "ESCALATE", "draft still contained pipeline metadata"
     if _PLACEHOLDER_RE.search(parsed["draft"]):
         return "ESCALATE", "draft contained an unfilled [template placeholder]"
+    if category in FORCED_CLOSE:
+        return "CLOSE", "noise: acknowledged and closed"
     return route, ""
 
 
