@@ -64,7 +64,10 @@ CATEGORIES = {
 # reply for these, so a bad model output cannot leak or mislabel them.
 FORCED_ESCALATE = {"security", "hostile"}
 CANNED_CLOSE    = {"spam"}
-NO_ACTION       = {"noise"}
+# Every surviving category is answered. "noise" (test issues, +1, "any update?")
+# used to short-circuit to no-action here; it now flows through the decision
+# pipeline like anything else so nothing is left silently unanswered.
+NO_ACTION: set[str] = set()
 
 # ---------------------------------------------------------------------------
 # Operator files (loaded once at startup)
@@ -670,12 +673,6 @@ def triage_issue_text(
         parsed = _canned_escalation(issue_text, category)
         parsed["guardrail"] = f"{category} issues never take a public route"
         return parsed
-    if category in NO_ACTION:
-        return {"category": category, "route": None, "labels": [], "priority": "n/a",
-                "docs_checked": "short-circuited", "guardrail": "",
-                "draft": ("No action needed - this is noise (+1 / 'any update?'). "
-                          "Recommend a reaction emoji or a one-line 'tracked in #X'."),
-                "raw": ""}
     if category in CANNED_CLOSE:
         return {"category": category, "route": "CLOSE", "labels": ["invalid"],
                 "priority": "n/a", "docs_checked": "short-circuited", "guardrail": "",
@@ -793,16 +790,6 @@ def run_triage(
             if result_cb:
                 result_cb(issue, parsed)
             log("  -> ESCALATE (short-circuit, nothing posted)")
-            continue
-
-        if category in NO_ACTION:
-            _write_issue_log(issue, {"category": category, "labels": [], "priority": "n/a",
-                                     "draft": None, "raw": ""},
-                             "NO ACTION", repo_name, model, provider, dry_run)
-            if result_cb:
-                result_cb(issue, {"category": category, "route": None, "labels": [],
-                                  "priority": "n/a", "draft": None, "raw": ""})
-            log("  -> no action (noise)")
             continue
 
         if category in CANNED_CLOSE:

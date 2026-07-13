@@ -96,10 +96,14 @@ These exit **before** any doc lookup. Do not spend doc-reading effort on them.
   core into the brief, but tone/moderation is a human decision. Stop here.
 - **spam** → **CLOSE**, label `invalid`, no individualized reply (use the spam close
   template). Stop here.
-- **noise** (`+1`, "any update?") → **no action**; recommend a reaction or a one-line
-  "tracked in #X" rather than a full reply. Do not reopen doc work. Stop here.
 
-Everything that survives (bug / feature / question / docs / duplicate) continues.
+**noise** (`+1`, "me too", "any update?", empty/test issues) does **not** short-circuit —
+every author gets an answer. Skip the doc lookup, but still **RESPOND** with a short,
+friendly acknowledgment: thank them, and if it's a bare "+1"/"any update?" point them at
+reactions or the tracking issue; if it's an empty or test issue, invite them to add
+details about what they're seeing. Keep it to one or two sentences. No labels, no priority.
+
+Everything that survives (noise / bug / feature / question / docs / duplicate) continues.
 
 ---
 
